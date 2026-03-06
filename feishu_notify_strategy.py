@@ -1,6 +1,10 @@
 import json
 import datetime as dt
 from urllib import request
+import pandas as pd
+from jqdata import *
+import numpy as np
+import talib 
 
 # 飞书通知函数
 def notify_feishu(title, content, feishu_webhook, feishu_enable=True):
@@ -62,6 +66,28 @@ notify_feishu('策略启动', '初始化完成：日频调仓+日频风控+周�
 # =========================
 # 示例策略集成（实际交易逻辑）：
 # =========================
+
+def get_agile_trend(security, context):
+    """
+    敏捷趋势判断：获取现价、MA20、以及MA20的斜率
+    """
+    if get_security_info(security).start_date >= context.previous_date: 
+        return 0, 99999, -1
+
+    # 获取过去25天的价格数据
+    price = get_price(security, end_date=context.previous_date, count=25, fields=['close'])
+    if len(price) < 22:
+        return 0, 99999, -1
+
+    closes = price['close'].values
+    ma20_curr = closes[-20:].mean()  # 当前20日均线
+    ma20_prev = closes[-21:-1].mean()  # 前20日均线
+    current = closes[-1]  # 当前价格
+    
+    # 斜率：当前MA20 - 昨日MA20 / 昨日MA20
+    slope = (ma20_curr - ma20_prev) / ma20_prev
+    
+    return current, ma20_curr, slope
 
 def rebalance_portfolio(context):
     """
